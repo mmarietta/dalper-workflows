@@ -11,27 +11,25 @@ int SpinMotorPin  = 9;
 int CutSwitchPin  = 10;
 
 // C O N S T A N T S
-int torchRestingAngle = 0;
-int torchBurningAngle = 20;
+int torchRestingAngle           = 0;
+int torchBurningAngle           = 20;
 
-int torchMeltBallDuration = 3500;
-int torchSoftenBendDuration = 1000;
+int torchMeltBallDuration       = 3500;
+int torchSoftenBendDuration     = 1000;
 
 int advanceRodToMeltingDuration = 500;
-int advanceRodToBendDuration = 500;
+int advanceRodToBendDuration    = 500;
 
-int postOperation10msDelay = 10;
-int postOperationShortDelay = 50;
-int postOperationMediumDelay = 200;
-int postOperationLongDelay = 500;
-int postOperation1SecDelay = 1000;
+int postOperation10msDelay      = 10;
+int postOperationShortDelay     = 50;
+int postOperationMediumDelay    = 200;
+int postOperationLongDelay      = 500;
+int postOperation1SecDelay      = 1000;
+int postOperationWhileDelay     = 10;
 
-int postOperationWhileDelay = 10;
-
-int loopCounter = 0;
-
-int runOnceMore = false;
-int paused = true;
+int loopCounter  = 0;
+int runOnceMore  = false;
+int paused       = true;
 
 /***********************************
  *  S E T U P                      *
@@ -79,6 +77,10 @@ void loop() {
 
 void initializeAll() {
 
+  if (runOnceMore) { 
+    paused = true;
+  }
+    
   loopCounter++;
   Serial.println(loopCounter);
   if (paused) {
@@ -88,60 +90,44 @@ void initializeAll() {
     }
   }
   
-  if (runOnceMore) {
-    Serial.println("Running One More Time");
-    paused = true;
-  }
 }
 
 /************************************
  *  W O R K F L O W  M E T H O D S  *
  ************************************/ 
 void advanceRodToFirstPosition() {
-  if (!paused) {
-    Serial.println("- Advance Rod to First Position");
-    engageBallStop(postOperationMediumDelay);
-    advanceRod(advanceRodToMeltingDuration,postOperationMediumDelay);
-    retractBallStop(postOperationShortDelay);
-  }
+  Serial.println("- Advance Rod to First Position");
+  engageBallStop(postOperationMediumDelay);
+  advanceRod(advanceRodToMeltingDuration,postOperationMediumDelay);
+  retractBallStop(postOperationShortDelay);
 }
 
 void advanceRodToFinalPosition() {
-  if (!paused) {
-    Serial.println("- Advance Rod to Final Position");
-    advanceRod(advanceRodToBendDuration,postOperationShortDelay);
-  }
+  Serial.println("- Advance Rod to Final Position");
+  advanceRod(advanceRodToBendDuration,postOperationShortDelay);
 }
 
 void meltBallUsingTorch() {
-  if (!paused) {
-    Serial.println("- Start Melt Ball Sequence.");
-    spinRodMotor(); 
-    operateTorch(torchBurningAngle,torchMeltBallDuration,600);
-    stopRodMotor(postOperationShortDelay);
-  }
+  Serial.println("- Start Melt Ball Sequence.");
+  spinRodMotor(); 
+  operateTorch(torchBurningAngle,torchMeltBallDuration,600);
+  stopRodMotor(postOperationShortDelay);
 }
 
 void bendRodUsingTorch() {
-  if (!paused) {
-    Serial.println("- Start Bend Sequence.");
-    operateTorch(torchBurningAngle,torchSoftenBendDuration,postOperationLongDelay);
-  }
+  Serial.println("- Start Bend Sequence.");
+  operateTorch(torchBurningAngle,torchSoftenBendDuration,postOperationLongDelay);
 }
 
 void cutRodUsingDuration(int cutCamDuration, int finalDelay) {
-  if (!paused) {
-    Serial.println("- Cut Rod using Duration.");
-    startWithDelay(CutterCamPin,cutCamDuration);
-    stopWithDelay(CutterCamPin,finalDelay);
-  }
+  Serial.println("- Cut Rod using Duration.");
+  startWithDelay(CutterCamPin,cutCamDuration);
+  stopWithDelay(CutterCamPin,finalDelay);
 }
 
 void cutRodUsingSwitchCondition() {
-  if (!paused) {
-    Serial.println("- Cut Rod using Switch.");
-    runCutterCamUntilSwitchIsOn();
-  }
+  Serial.println("- Cut Rod using Switch.");
+  runCutterCamUntilSwitchIsOn();
 }
 
 /************************************
@@ -149,15 +135,13 @@ void cutRodUsingSwitchCondition() {
  ************************************/ 
 void runCutterCamUntilSwitchIsOn() {
   Serial.println(" -  Start Cutter Cam");
-  if (cutSwitchIsOff()) {
-    Serial.println("  -  Starting in the OFF position");
-    runCutterUntilSwitchEngaged();
-  } else {
+  if (cutSwitchIsOn()) {
     Serial.println("  -  Starting in the ON position");
     runCutterUntilSwitchDisengaged();
-    Serial.println("  -  Switch is now OFF, wait for it to come back on");
-    runCutterUntilSwitchEngaged();
-  }
+  } 
+  Serial.println("  -  Switch is OFF, wait for it to come back on");
+  runCutterUntilSwitchEngaged();
+  
   Serial.println(" -  End Cutter Cam");
 }
 
@@ -201,19 +185,20 @@ boolean cutterCamIsOn() {
  ************************************/ 
 void pauseWorkflow() {
   if (paused && !runOnceMore) {
-    Serial.println("Interrupt - Unpausing Workflow");
+    Serial.println("Interrupt - Unpausing Workflow, Set to Run one more time");
+    runOnceMore = true;
     paused = false;
   } 
 
-  if (!paused && !runOnceMore) {
-    Serial.println("Interrupt - Set to Run Once More");
-    runOnceMore = true;
+  if (!paused && runOnceMore) {
+    Serial.println("Interrupt - Set to Run Continuously");
+    runOnceMore = false;
   }
 
-  if (runOnceMore) {
-    Serial.println("Interrupt - HARD STOP - Shutting everything down");
-    paused = true;
+  if (!paused && !runOnceMore) {
+    Serial.println("Interrupt - Finish the Last loop");
     runOnceMore = false;
+    paused = true;
     stopUsingPin(CutterCamPin);
     stopUsingPin(RodStopperPin);
     stopUsingPin(RodPusherPin);
@@ -222,7 +207,7 @@ void pauseWorkflow() {
       runCutterUntilSwitchEngaged();
     }
     setTorchAndDelay(torchRestingAngle,postOperationShortDelay); 
-    Serial.println("Interrupt - HARD STOP - Complete");
+    Serial.println("Interrupt - Finish the Last loop");
   }
 
 }
