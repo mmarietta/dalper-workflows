@@ -30,6 +30,9 @@ int postOperationWhileDelay = 10;
 
 int loopCounter = 0;
 
+int runOnceMore = false;
+int paused = true;
+
 /***********************************
  *  S E T U P                      *
  ***********************************/
@@ -44,7 +47,7 @@ void setup() {
   pinMode(RodStopperPin, OUTPUT);
   pinMode(CutterCamPin,  OUTPUT);
   pinMode(CutSwitchPin,  INPUT_PULLUP);
-  //pinMode(CutSwitchPin,  INPUT);
+  attachInterrupt(0, pauseWorkflow, RISING);
   
   if (cutSwitchIsOff()) {
     runCutterUntilSwitchEngaged();
@@ -55,6 +58,7 @@ void setup() {
  *  W O R K F L O W  M A I N       *
  ***********************************/ 
 void loop() {
+
   Serial.println("Begin nose screw workflow.");
   
   initializeAll();
@@ -77,53 +81,67 @@ void initializeAll() {
 
   loopCounter++;
   Serial.println(loopCounter);
-//  stopUsingPin(SpinMotorPin);
-//  stopUsingPin(RodPusherPin);
-//  stopUsingPin(RodStopperPin);
-  //stopUsingPin(CutterCamPin);
-//  if (cutSwitchIsOff()) {
-//    runCutterUntilSwitchEngaged();
-//  }
-
-  //setTorchAndDelay(torchRestingAngle,postOperationLongDelay); 
+  if (paused) {
+    Serial.println("Paused - Waiting for Interrupt");
+    while(paused) {
+      delay(postOperationWhileDelay);
+    }
+  }
+  
+  if (runOnceMore) {
+    Serial.println("Running One More Time");
+    paused = true;
+  }
 }
 
 /************************************
  *  W O R K F L O W  M E T H O D S  *
  ************************************/ 
 void advanceRodToFirstPosition() {
-  Serial.println("- Advance Rod to First Position");
-  engageBallStop(postOperationMediumDelay);
-  advanceRod(advanceRodToMeltingDuration,postOperationMediumDelay);
-  retractBallStop(postOperationShortDelay);
+  if (!paused) {
+    Serial.println("- Advance Rod to First Position");
+    engageBallStop(postOperationMediumDelay);
+    advanceRod(advanceRodToMeltingDuration,postOperationMediumDelay);
+    retractBallStop(postOperationShortDelay);
+  }
 }
 
 void advanceRodToFinalPosition() {
-  Serial.println("- Advance Rod to Final Position");
-  advanceRod(advanceRodToBendDuration,postOperationShortDelay);
+  if (!paused) {
+    Serial.println("- Advance Rod to Final Position");
+    advanceRod(advanceRodToBendDuration,postOperationShortDelay);
+  }
 }
 
 void meltBallUsingTorch() {
-  Serial.println("- Start Melt Ball Sequence.");
-  spinRodMotor(); 
-  operateTorch(torchBurningAngle,torchMeltBallDuration,600);
-  stopRodMotor(postOperationShortDelay);
+  if (!paused) {
+    Serial.println("- Start Melt Ball Sequence.");
+    spinRodMotor(); 
+    operateTorch(torchBurningAngle,torchMeltBallDuration,600);
+    stopRodMotor(postOperationShortDelay);
+  }
 }
 
 void bendRodUsingTorch() {
-  Serial.println("- Start Bend Sequence.");
-  operateTorch(torchBurningAngle,torchSoftenBendDuration,postOperationLongDelay);
+  if (!paused) {
+    Serial.println("- Start Bend Sequence.");
+    operateTorch(torchBurningAngle,torchSoftenBendDuration,postOperationLongDelay);
+  }
 }
 
 void cutRodUsingDuration(int cutCamDuration, int finalDelay) {
-  Serial.println("- Cut Rod using Duration.");
-  startWithDelay(CutterCamPin,cutCamDuration);
-  stopWithDelay(CutterCamPin,finalDelay);
+  if (!paused) {
+    Serial.println("- Cut Rod using Duration.");
+    startWithDelay(CutterCamPin,cutCamDuration);
+    stopWithDelay(CutterCamPin,finalDelay);
+  }
 }
 
 void cutRodUsingSwitchCondition() {
-  Serial.println("- Cut Rod using Switch.");
-  runCutterCamUntilSwitchIsOn();
+  if (!paused) {
+    Serial.println("- Cut Rod using Switch.");
+    runCutterCamUntilSwitchIsOn();
+  }
 }
 
 /************************************
@@ -148,7 +166,7 @@ void runCutterUntilSwitchEngaged() {
   while(cutSwitchIsOff()) {
     delay(postOperationWhileDelay);
   }
-  stopWithDelay(CutterCamPin,postOperation1SecDelay); //postOperationShortDelay);
+  stopWithDelay(CutterCamPin,postOperation1SecDelay); 
 }
 
 void runCutterUntilSwitchDisengaged() {
@@ -181,6 +199,34 @@ boolean cutterCamIsOn() {
 /************************************
  *  U T I L I T Y    M E T H O D S  *
  ************************************/ 
+void pauseWorkflow() {
+  if (paused && !runOnceMore) {
+    Serial.println("Interrupt - Unpausing Workflow");
+    paused = false;
+  } 
+
+  if (!paused && !runOnceMore) {
+    Serial.println("Interrupt - Set to Run Once More");
+    runOnceMore = true;
+  }
+
+  if (runOnceMore) {
+    Serial.println("Interrupt - HARD STOP - Shutting everything down");
+    paused = true;
+    runOnceMore = false;
+    stopUsingPin(CutterCamPin);
+    stopUsingPin(RodStopperPin);
+    stopUsingPin(RodPusherPin);
+    stopUsingPin(SpinMotorPin);
+    if (cutSwitchIsOff()) {
+      runCutterUntilSwitchEngaged();
+    }
+    setTorchAndDelay(torchRestingAngle,postOperationShortDelay); 
+    Serial.println("Interrupt - HARD STOP - Complete");
+  }
+
+}
+
 void stopUsingPin(int pinValue) {
   if (digitalRead(pinValue) == HIGH) {
     digitalWrite(pinValue, LOW);
