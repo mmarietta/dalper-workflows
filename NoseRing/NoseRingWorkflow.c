@@ -21,7 +21,7 @@ int postMeltBallDelay           = 2000;
 int torchBendAngle              = 18;
 int torchSoftenBendDuration     = 1500;
 
-int advanceRodToMeltingDuration = 500;
+int advanceRodToMeltingDuration = 650;
 int advanceRodToBendDuration    = 500;
 
 int postOperation10msDelay      = 10;
@@ -44,6 +44,7 @@ void setup() {
   Serial.begin(9600); 
 
   torch.attach(ServoPin);
+  torch.write(0); 
 
   pinMode(SpinMotorPin,  OUTPUT);       
   pinMode(RodPusherPin,  OUTPUT);
