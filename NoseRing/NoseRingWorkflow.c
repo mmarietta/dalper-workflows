@@ -12,10 +12,14 @@ int CutSwitchPin  = 10;
 
 // C O N S T A N T S
 int torchRestingAngle           = 0;
-int torchBurningAngle           = 20;
+//int torchBurningAngle           = 20;
 
-int torchMeltBallDuration       = 3500;
-int torchSoftenBendDuration     = 1000;
+int torchMeltBallAngle          = 20;
+int torchMeltBallDuration       = 3000;
+int postMeltBallDelay           = 2000;
+
+int torchBendAngle              = 18;
+int torchSoftenBendDuration     = 1500;
 
 int advanceRodToMeltingDuration = 500;
 int advanceRodToBendDuration    = 500;
@@ -29,7 +33,8 @@ int postOperationWhileDelay     = 10;
 
 int loopCounter  = 0;
 int runOnceMore  = false;
-int paused       = true;
+//int paused       = true;
+int paused       = false;
 
 /***********************************
  *  S E T U P                      *
@@ -45,7 +50,7 @@ void setup() {
   pinMode(RodStopperPin, OUTPUT);
   pinMode(CutterCamPin,  OUTPUT);
   pinMode(CutSwitchPin,  INPUT_PULLUP);
-  attachInterrupt(0, pauseWorkflow, RISING);
+  //attachInterrupt(0, pauseWorkflow, RISING);
   
   if (cutSwitchIsOff()) {
     runCutterUntilSwitchEngaged();
@@ -110,13 +115,13 @@ void advanceRodToFinalPosition() {
 void meltBallUsingTorch() {
   Serial.println("- Start Melt Ball Sequence.");
   spinRodMotor(); 
-  operateTorch(torchBurningAngle,torchMeltBallDuration,600);
+  operateTorch(torchMeltBallAngle,torchMeltBallDuration,postMeltBallDelay);
   stopRodMotor(postOperationShortDelay);
 }
 
 void bendRodUsingTorch() {
   Serial.println("- Start Bend Sequence.");
-  operateTorch(torchBurningAngle,torchSoftenBendDuration,postOperationLongDelay);
+  operateTorch(torchBendAngle,torchSoftenBendDuration,postOperationLongDelay);
 }
 
 void cutRodUsingDuration(int cutCamDuration, int finalDelay) {
@@ -199,13 +204,13 @@ void pauseWorkflow() {
     Serial.println("Interrupt - Finish the Last loop");
     runOnceMore = false;
     paused = true;
-    stopUsingPin(CutterCamPin);
-    stopUsingPin(RodStopperPin);
-    stopUsingPin(RodPusherPin);
-    stopUsingPin(SpinMotorPin);
-    if (cutSwitchIsOff()) {
-      runCutterUntilSwitchEngaged();
-    }
+   // stopUsingPin(CutterCamPin);
+   // stopUsingPin(RodStopperPin);
+   // stopUsingPin(RodPusherPin);
+   // stopUsingPin(SpinMotorPin);
+   // if (cutSwitchIsOff()) {
+   //   runCutterUntilSwitchEngaged();
+   // }
     setTorchAndDelay(torchRestingAngle,postOperationShortDelay); 
     Serial.println("Interrupt - Finish the Last loop");
   }
